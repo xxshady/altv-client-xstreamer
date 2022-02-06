@@ -1,0 +1,1 @@
+export { IdProvider } from "./class"
