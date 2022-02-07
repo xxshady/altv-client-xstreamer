@@ -3,6 +3,20 @@ import * as native from "natives"
 import { Entity } from "altv-client-xstreamer"
 
 class Marker extends Entity {
+  static {
+    // also we can get all streamed in entities(here markers) using Marker.getStreamedIn()
+    // and e.g. destroy them on disconnect/resourceStop
+    // but here its just useless xd because these are markers
+    // this is just an example
+
+    alt.on("resourceStop", () => {
+      const markers = Marker.getStreamedIn()
+      for (let i = 0; i < markers.length; i++) {
+        markers[i]._streamOut()
+      }
+    })
+  }
+
   constructor(pos, type = 1, scale = 0.5) {
     super(pos, 5.0)
     this.type = type

@@ -11,22 +11,13 @@ var __decorateClass = (decorators, target, key, kind) => {
 };
 
 // src/main.ts
-import {
-  Vector3,
-  clearEveryTick,
-  everyTick
-} from "alt-client";
-import {
-  drawMarker
-} from "natives";
+import * as alt4 from "alt-client";
+import * as native from "natives";
 
 // node_modules/altv-client-xstreamer/dist/main.js
 import alt2 from "alt-shared";
 import alt from "alt-shared";
-import {
-  Player,
-  setTimeout
-} from "alt-client";
+import * as alt3 from "alt-client";
 
 // altv-client-worker:C:\altv-dev\projects\altv-client-xstreamer\examples\esbuild\ts\node_modules\altv-client-xstreamer\dist\streamer.worker
 import { Worker } from "alt-client";
@@ -371,7 +362,7 @@ function objectToString(o) {
 function stylizeWithColor(str, styleType) {
   const style = inspect.styles[styleType];
   if (style) {
-    return "[" + inspect.colors[style][0] + "m" + str + "[" + inspect.colors[style][1] + "m";
+    return "\x1B[" + inspect.colors[style][0] + "m" + str + "\x1B[" + inspect.colors[style][1] + "m";
   } else {
     return str;
   }
@@ -437,8 +428,8 @@ var _Logger = class {
 };
 var Logger = _Logger;
 __publicField(Logger, "startLogColor", "~cl~");
-__publicField(Logger, "nodeCyanColor", "[36m");
-__publicField(Logger, "nodeWhiteColor", "[37m");
+__publicField(Logger, "nodeCyanColor", "\x1B[36m");
+__publicField(Logger, "nodeWhiteColor", "\x1B[37m");
 __decorate([
   checkEnabled(LogLevel.Info),
   __metadata("design:type", Function),
@@ -504,7 +495,7 @@ var _Streamer = class {
       for (let i = 0; i < streamIn.length; ++i)
         this.streamInEntityHandler(streamIn[i]);
       if (mainStream)
-        setTimeout(() => this.runMainStream(), this.mainStreamSleepMs);
+        alt3.setTimeout(() => this.runMainStream(), this.mainStreamSleepMs);
     },
     ["entitiesCreated"]: () => {
       const { entityCreateQueue } = this;
@@ -514,7 +505,7 @@ var _Streamer = class {
       entityCreateQueue.sendPromise = null;
     }
   };
-  localPlayer = Player.local;
+  localPlayer = alt3.Player.local;
   oldPos = { x: 0, y: 0 };
   streamInEntityHandler;
   streamOutEntityHandler;
@@ -573,7 +564,7 @@ var _Streamer = class {
       pos: { x, y }
     } = this.localPlayer;
     if (x === this.oldPos.x && y === this.oldPos.y) {
-      setTimeout(() => this.runMainStream(), this.mainStreamSleepMs);
+      alt3.setTimeout(() => this.runMainStream(), this.mainStreamSleepMs);
       return;
     }
     this.oldPos = { x, y };
@@ -804,6 +795,14 @@ var Marker = class extends Entity {
     this.type = type;
     this._scale = _scale;
   }
+  static {
+    alt4.on("resourceStop", () => {
+      const markers = Marker.getStreamedIn();
+      for (let i = 0; i < markers.length; i++) {
+        markers[i].streamOut();
+      }
+    });
+  }
   render = null;
   get scale() {
     return this._scale;
@@ -812,14 +811,14 @@ var Marker = class extends Entity {
     this._scale = value;
   }
   streamIn() {
-    this.render = everyTick(() => {
-      drawMarker(this.type, this.pos.x, this.pos.y, this.pos.z, 0, 0, 0, 0, 0, 0, this.scale, this.scale, this.scale, 100, 170, 255, 200, false, false, 2, true, void 0, void 0, false);
+    this.render = alt4.everyTick(() => {
+      native.drawMarker(this.type, this.pos.x, this.pos.y, this.pos.z, 0, 0, 0, 0, 0, 0, this.scale, this.scale, this.scale, 100, 170, 255, 200, false, false, 2, true, void 0, void 0, false);
     });
   }
   streamOut() {
     if (this.render == null)
       return;
-    clearEveryTick(this.render);
+    alt4.clearEveryTick(this.render);
     this.render = null;
   }
 };
@@ -834,10 +833,10 @@ Marker = __decorateClass([
   })
 ], Marker);
 Marker.maxStreamedIn = 3;
-new Marker(new Vector3(0, 0, 71));
-new Marker(new Vector3(0, 1, 71));
-new Marker(new Vector3(0, 2, 71));
-new Marker(new Vector3(0, 3, 71));
-var marker = new Marker(new Vector3(0, 4, 71));
+new Marker(new alt4.Vector3(0, 0, 71));
+new Marker(new alt4.Vector3(0, 1, 71));
+new Marker(new alt4.Vector3(0, 2, 71));
+new Marker(new alt4.Vector3(0, 3, 71));
+var marker = new Marker(new alt4.Vector3(0, 4, 71));
 marker.destroy();
 marker.scale = 1.5;

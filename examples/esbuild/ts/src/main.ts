@@ -8,6 +8,20 @@ import { Entity, defineEntityPool, validEntity } from "altv-client-xstreamer"
   onStreamOut: (marker) => marker.streamOut(),
 })
 class Marker extends Entity {
+  static {
+    // also we can get all streamed in entities(here markers) using Marker.getStreamedIn()
+    // and e.g. destroy them on disconnect/resourceStop
+    // but here its just useless xd because these are markers
+    // this is just an example
+
+    alt.on("resourceStop", () => {
+      const markers = Marker.getStreamedIn()
+      for (let i = 0; i < markers.length; i++) {
+        markers[i].streamOut()
+      }
+    })
+  }
+
   private render: number | null = null
 
   constructor(

@@ -1,11 +1,5 @@
 // node_modules/altv-client-xstreamer/dist/streamer.worker.js
-import {
-  emit,
-  log,
-  logError,
-  logWarning,
-  on
-} from "alt-worker";
+import * as alt from "alt-worker";
 var distance2dInRange = (a, b, range) => {
   const ab1 = b.x - a.x;
   const ab2 = b.y - a.y;
@@ -81,23 +75,23 @@ var StreamWorker = class {
   entities = {};
   entityArray = [];
   lastStreamingPos = { x: 0, y: 0 };
-  log = false ? (...args) => log("~cl~[streamer-worker]~w~", ...args) : () => {
+  log = false ? (...args) => alt.log("~cl~[streamer-worker]~w~", ...args) : () => {
   };
   constructor() {
     this.initEvents();
   }
   initEvents() {
     for (const eventName in this.eventHandlers)
-      on(eventName, this.eventHandlers[eventName]);
+      alt.on(eventName, this.eventHandlers[eventName]);
   }
   emitClient(eventName, ...args) {
-    emit(eventName, ...args);
+    alt.emit(eventName, ...args);
   }
   logError(...args) {
-    logError("[streamer-worker]", ...args);
+    alt.logError("[streamer-worker]", ...args);
   }
   logWarn(...args) {
-    logWarning("[streamer-worker]", ...args);
+    alt.logWarning("[streamer-worker]", ...args);
   }
   addEntityIntoArray(entity) {
     this.entityArray.push({
