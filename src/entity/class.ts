@@ -50,7 +50,7 @@ export class Entity {
     return this._streamedIn as InstanceType<T>[]
   }
 
-  public static defineEntityPool(options: IEntityPoolOptions = {}): void {
+  public static defineEntityPool<T extends typeof Entity>(this: T, options: IEntityPoolOptions<InstanceType<T>> = {}): void {
     if (this === Entity)
       throw new Error("Entity.defineEntityPool cannot be called on Entity class, call it on your class extended from Entity")
 
@@ -70,12 +70,14 @@ export class Entity {
       maxStreamedIn,
     })
 
-    const pool = {
+    const pool: IEntityPool<InstanceType<T>> = {
       streamedIn: [],
       onStreamIn,
       onStreamOut,
     }
-    Entity.pools[id] = pool
+
+    // TODO fix this shit
+    Entity.pools[id] = pool as unknown as IEntityPool
 
     this.poolId = id
     this._maxStreamedIn = maxStreamedIn

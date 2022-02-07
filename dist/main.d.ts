@@ -18,7 +18,7 @@ export declare class Entity {
 	static get maxStreamedIn(): number;
 	static set maxStreamedIn(value: number);
 	static getStreamedIn<T extends typeof Entity>(this: T): InstanceType<T>[];
-	static defineEntityPool(options?: IEntityPoolOptions): void;
+	static defineEntityPool<T extends typeof Entity>(this: T, options?: IEntityPoolOptions<InstanceType<T>>): void;
 	static getByID(id: number): Entity | null;
 	private static onStreamInEntityId;
 	private static onStreamOutEntityId;
@@ -39,5 +39,10 @@ export declare const defineEntityPool: <T extends Entity>(options?: IEntityPoolO
 	new (...args: any[]): T;
 	defineEntityPool: (options?: IEntityPoolOptions<any> | undefined) => void;
 }) => void;
+export declare const validEntity: () => (target: {
+	constructor: {
+		name: string;
+	};
+}, propertyName: string, descriptor: PropertyDescriptor) => void;
 
 export {};
