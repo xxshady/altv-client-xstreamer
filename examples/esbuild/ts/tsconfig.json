@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "target": "ESNext",
+    "moduleResolution": "node",
+    "strict": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "experimentalDecorators": true,
+    "typeRoots": ["./node_modules/@altv"],
+    "outDir": "./dist"
+  },
+  "include": [
+    "src/**/*"
+  ],
+}

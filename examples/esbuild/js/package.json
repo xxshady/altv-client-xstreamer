@@ -1,0 +1,18 @@
+{
+  "name": "esbuild-any-named-export",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "node --es-module-specifier-resolution=node build.js"
+  },
+  "dependencies": {
+    "@altv/types-client": "^2.0.0",
+    "@altv/types-natives": "^1.4.4",
+    "@altv/types-shared": "^1.1.2",
+    "altv-client-xstreamer": "^0.0.2",
+    "altv-esbuild-client-worker": "^0.1.1",
+    "esbuild": "^0.13.8"
+  },
+  "type": "module"
+}
