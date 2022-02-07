@@ -12,7 +12,6 @@ import type {
   IEntityCreateQueue,
   IWorkerEntityPoolOptions,
 } from "./types"
-// @ts-ignore worker import
 import worker from "worker!./streamer.worker"
 import { Logger } from "@/logger"
 

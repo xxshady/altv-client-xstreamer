@@ -1,5 +1,4 @@
-import * as alt from "alt-client"
-
+/// <reference types="@altv/types-client"/>
 /**
  * typings for worker imports altv-esbuild-client-worker
  * e.g.
@@ -8,10 +7,10 @@ import * as alt from "alt-client"
  * or
  * import worker from "worker!./example.worker"
  * 
- * `worker` will be {@link alt.Worker} instance
+ * `worker` will be {@link Worker} instance
  */
 
-declare module "*.worker.ts" {
+ declare module "*.worker.ts" {
   import { Worker } from "alt-client"
   
   const worker: Worker
