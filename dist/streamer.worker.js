@@ -93,7 +93,7 @@ var StreamWorker = class {
   entities = {};
   entityArray = [];
   lastStreamingPos = { x: 0, y: 0 };
-  log = true ? (...args) => alt.log("~cl~[streamer-worker]~w~", ...args) : () => {
+  log = false ? (...args) => alt.log("~cl~[streamer-worker]~w~", ...args) : () => {
   };
   constructor() {
     this.initEvents();

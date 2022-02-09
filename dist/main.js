@@ -453,7 +453,7 @@ __decorate([
 var Logger2 = class extends Logger {
   constructor(name) {
     super(`client-xstreamer > ${name}`, {
-      logLevel: true ? LogLevel.Info : LogLevel.Warn
+      logLevel: false ? LogLevel.Info : LogLevel.Warn
     });
   }
 };
