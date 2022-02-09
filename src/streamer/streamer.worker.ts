@@ -89,6 +89,24 @@ class StreamWorker {
         this.runStreamProcess()
       }
     },
+
+    [WorkerIntoEvents.UpdateEntity]: (entityUpdate) => {
+      const entity = this.entities[entityUpdate.id]
+
+      if (!entity) {
+        this.logError(`[updateEntity] entity: ${entityUpdate.id} not found`)
+        return
+      }
+
+      const {
+        pos,
+      } = entityUpdate
+
+      if (pos != null) {
+        entity.pos = pos
+        this.runStreamProcess()
+      }
+    },
   }
 
   private readonly pools: Record<number, IWorkerEntityPool> = {}
@@ -161,15 +179,16 @@ class StreamWorker {
   } {
     const streamInIds: number[] = []
     const streamOutIds: number[] = []
-    const { entityArray } = this
+    const { entityArray, entities } = this
 
     for (let i = 0; i < entityArray.length; i++) {
-      const entity = entityArray[i]
+      const arrEntity = entityArray[i]
+      const entity = entities[arrEntity.id]
 
-      entity.dist = distance2dInRange(
+      arrEntity.dist = distance2dInRange(
         entity.pos,
         streamingPos,
-        entity.streamRange,
+        arrEntity.streamRange,
       )
     }
 
@@ -187,7 +206,7 @@ class StreamWorker {
 
     for (let i = 0; i < entityArray.length; i++) {
       const arrEntity = entityArray[lastIdx]
-      const entity = this.entities[arrEntity.id]
+      const entity = entities[arrEntity.id]
 
       if (arrEntity.dist > arrEntity.streamRange) {
         lastIdx++
@@ -207,7 +226,7 @@ class StreamWorker {
 
     for (let i = lastIdx; i < entityArray.length; i++) {
       const arrEntity = entityArray[i]
-      const entity = this.entities[arrEntity.id]
+      const entity = entities[arrEntity.id]
 
       this.streamOutEntity(entity, arrEntity, streamOutIds)
     }
@@ -247,7 +266,11 @@ class StreamWorker {
       streamOut,
     } = this.streamProcess(streamingPos)
 
-    // this.log("stream process", +new Date() - start)
+    // if (___DEVMODE) {
+    //   this.log("stream process~yl~", +new Date() - start)
+    //   streamIn.length && this.log(`stream in entity ids: ${JSON.stringify(streamIn)}`)
+    // }
+
     this.emitClient(
       WorkerFromEvents.StreamResult,
       streamOut,

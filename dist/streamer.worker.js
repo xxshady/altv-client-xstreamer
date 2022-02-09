@@ -73,13 +73,27 @@ var StreamWorker = class {
         pool.maxStreamedIn = maxStreamedIn;
         this.runStreamProcess();
       }
+    },
+    ["updateEntity" /* UpdateEntity */]: (entityUpdate) => {
+      const entity = this.entities[entityUpdate.id];
+      if (!entity) {
+        this.logError(`[updateEntity] entity: ${entityUpdate.id} not found`);
+        return;
+      }
+      const {
+        pos
+      } = entityUpdate;
+      if (pos != null) {
+        entity.pos = pos;
+        this.runStreamProcess();
+      }
     }
   };
   pools = {};
   entities = {};
   entityArray = [];
   lastStreamingPos = { x: 0, y: 0 };
-  log = false ? (...args) => alt.log("~cl~[streamer-worker]~w~", ...args) : () => {
+  log = true ? (...args) => alt.log("~cl~[streamer-worker]~w~", ...args) : () => {
   };
   constructor() {
     this.initEvents();
@@ -118,10 +132,11 @@ var StreamWorker = class {
   streamProcess(streamingPos) {
     const streamInIds = [];
     const streamOutIds = [];
-    const { entityArray } = this;
+    const { entityArray, entities } = this;
     for (let i = 0; i < entityArray.length; i++) {
-      const entity = entityArray[i];
-      entity.dist = distance2dInRange(entity.pos, streamingPos, entity.streamRange);
+      const arrEntity = entityArray[i];
+      const entity = entities[arrEntity.id];
+      arrEntity.dist = distance2dInRange(entity.pos, streamingPos, arrEntity.streamRange);
     }
     entityArray.sort(this.sortEntitiesByDistance);
     const poolsStreamIn = {};
@@ -130,7 +145,7 @@ var StreamWorker = class {
     let lastIdx = 0;
     for (let i = 0; i < entityArray.length; i++) {
       const arrEntity = entityArray[lastIdx];
-      const entity = this.entities[arrEntity.id];
+      const entity = entities[arrEntity.id];
       if (arrEntity.dist > arrEntity.streamRange) {
         lastIdx++;
         this.streamOutEntity(entity, arrEntity, streamOutIds);
@@ -145,7 +160,7 @@ var StreamWorker = class {
     }
     for (let i = lastIdx; i < entityArray.length; i++) {
       const arrEntity = entityArray[i];
-      const entity = this.entities[arrEntity.id];
+      const entity = entities[arrEntity.id];
       this.streamOutEntity(entity, arrEntity, streamOutIds);
     }
     return {

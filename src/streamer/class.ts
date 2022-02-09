@@ -75,6 +75,8 @@ export class Streamer {
     this.streamOutEntityHandler = handler
   }
 
+  // #region pool methods
+
   public addPool(pool: IWorkerEntityPoolOptions): void {
     this.emitWorker(WorkerIntoEvents.CreatePool, pool)
   }
@@ -87,6 +89,9 @@ export class Streamer {
       maxStreamedIn: value,
     })
   }
+  // #endregion
+
+  // #region entity methods
 
   public addEntity(entity: Entity): void {
     this.entityCreateQueue.entities.push({
@@ -104,6 +109,18 @@ export class Streamer {
   public removeEntity(entity: Entity): void {
     this.emitWorker(WorkerIntoEvents.DestroyEntity, entity.id)
   }
+
+  public setEntityPos(entity: Entity, value: alt.IVector2): void {
+    this.emitWorker(WorkerIntoEvents.UpdateEntity, {
+      id: entity.id,
+      pos: {
+        x: value.x,
+        y: value.y,
+      },
+    })
+  }
+
+  // #endregion
 
   // #region worker event methods
 

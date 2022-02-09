@@ -23,6 +23,11 @@ export interface IWorkerEntity {
   streamed: boolean
 }
 
+export interface IWorkerEntityUpdate {
+  readonly id: number
+  pos?: alt.IVector2
+}
+
 export interface IWorkerEntityArrElement {
   readonly id: number
   readonly poolId: number

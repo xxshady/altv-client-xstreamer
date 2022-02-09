@@ -175,6 +175,7 @@ export class Entity {
   @validEntity()
   public set pos(value: alt.IVector3) {
     this._pos = value
+    Streamer.instance.setEntityPos(this, value)
   }
 
   @validEntity()

@@ -453,7 +453,7 @@ __decorate([
 var Logger2 = class extends Logger {
   constructor(name) {
     super(`client-xstreamer > ${name}`, {
-      logLevel: false ? LogLevel.Info : LogLevel.Warn
+      logLevel: true ? LogLevel.Info : LogLevel.Warn
     });
   }
 };
@@ -547,6 +547,15 @@ var _Streamer = class {
   }
   removeEntity(entity) {
     this.emitWorker("destroyEntity" /* DestroyEntity */, entity.id);
+  }
+  setEntityPos(entity, value) {
+    this.emitWorker("updateEntity" /* UpdateEntity */, {
+      id: entity.id,
+      pos: {
+        x: value.x,
+        y: value.y
+      }
+    });
   }
   initEvents() {
     for (const eventName in this.eventHandlers)
@@ -756,6 +765,7 @@ var Entity = class {
   }
   set pos(value) {
     this._pos = value;
+    Streamer.instance.setEntityPos(this, value);
   }
   get streamed() {
     return this._streamed;
