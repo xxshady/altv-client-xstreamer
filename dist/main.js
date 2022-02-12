@@ -621,7 +621,7 @@ var validEntity = () => function(target, propertyName, descriptor) {
   if (typeof originalMethod === "function") {
     descriptor.value = function(...args) {
       assertValidEntity(this);
-      originalMethod.apply(this, args);
+      return originalMethod.apply(this, args);
     };
     return;
   }

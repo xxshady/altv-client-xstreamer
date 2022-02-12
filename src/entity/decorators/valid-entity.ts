@@ -12,7 +12,7 @@ export const validEntity = () => function(
   if (typeof originalMethod === "function") {
     descriptor.value = function(this: Entity, ...args: unknown[]): void {
       assertValidEntity(this)
-      originalMethod.apply(this, args)
+      return originalMethod.apply(this, args)
     }
 
     return
