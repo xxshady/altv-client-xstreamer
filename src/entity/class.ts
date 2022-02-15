@@ -16,45 +16,46 @@ const log = new Logger("Entity")
   },
 })
 export class Entity {
-  private static poolId: number | null = null
-  private static _maxStreamedIn: number | null = null
-  private static _streamedIn: Entity[] | null = null
-  private static readonly entityIdProvider = new IdProvider()
-  private static readonly poolIdProvider = new IdProvider()
+  private static __poolId: number | null = null
+  private static __maxStreamedIn: number | null = null
+  private static __streamedIn: Entity[] | null = null
 
-  private static readonly entities: Record<Entity["id"], Entity> = {}
-  private static readonly pools: Record<number, IEntityPool> = {}
+  private static readonly __entityIdProvider = new IdProvider()
+  private static readonly __poolIdProvider = new IdProvider()
+
+  private static readonly __entities: Record<Entity["id"], Entity> = {}
+  private static readonly __pools: Record<number, IEntityPool> = {}
 
   public static get maxStreamedIn(): number {
-    if (this.poolId == null || this._maxStreamedIn == null)
+    if (this.__poolId == null || this.__maxStreamedIn == null)
       throw new UndefinedEntityPoolError(this)
 
-    return this._maxStreamedIn
+    return this.__maxStreamedIn
   }
 
   public static set maxStreamedIn(value: number) {
-    if (this.poolId == null)
+    if (this.__poolId == null)
       throw new UndefinedEntityPoolError(this)
 
     if (value < 0)
       throw new Error("Entity.maxStreamedIn must be > 0")
 
-    this._maxStreamedIn = value
-    Streamer.instance.setPoolMaxStreamedIn(this.poolId, value)
+    this.__maxStreamedIn = value
+    Streamer.instance.setPoolMaxStreamedIn(this.__poolId, value)
   }
 
   public static getStreamedIn<T extends typeof Entity>(this: T): InstanceType<T>[] {
-    if (this.poolId == null || this._streamedIn == null)
+    if (this.__poolId == null || this.__streamedIn == null)
       throw new UndefinedEntityPoolError(this)
 
-    return this._streamedIn as InstanceType<T>[]
+    return this.__streamedIn as InstanceType<T>[]
   }
 
   public static defineEntityPool<T extends typeof Entity>(this: T, options: IEntityPoolOptions<InstanceType<T>> = {}): void {
     if (this === Entity)
       throw new Error("Entity.defineEntityPool cannot be called on Entity class, call it on your class extended from Entity")
 
-    if (this.poolId != null)
+    if (this.__poolId != null)
       throw new Error(`${this.name} pool already defined`)
 
     const {
@@ -63,7 +64,7 @@ export class Entity {
       onStreamOut = () => {},
     } = options
 
-    const id = Entity.poolIdProvider.getNext()
+    const id = Entity.__poolIdProvider.getNext()
 
     Streamer.instance.addPool({
       id,
@@ -77,19 +78,19 @@ export class Entity {
     }
 
     // TODO fix this shit
-    Entity.pools[id] = pool as unknown as IEntityPool
+    Entity.__pools[id] = pool as unknown as IEntityPool
 
-    this.poolId = id
-    this._maxStreamedIn = maxStreamedIn
-    this._streamedIn = pool.streamedIn
+    this.__poolId = id
+    this.__maxStreamedIn = maxStreamedIn
+    this.__streamedIn = pool.streamedIn
   }
 
   public static getByID(id: number): Entity | null {
-    return Entity.entities[id] ?? null
+    return Entity.__entities[id] ?? null
   }
 
   private static onStreamInEntityId(entityId: number) {
-    const entity = Entity.entities[entityId]
+    const entity = Entity.__entities[entityId]
 
     if (!entity) {
       log.error(`Entity.onStreamIn unknown entity: ${entityId}`)
@@ -102,7 +103,7 @@ export class Entity {
     }
     entity._streamed = true
 
-    const pool = this.pools[entity.poolId]
+    const pool = this.__pools[entity.poolId]
 
     if (!pool) {
       log.error(`Entity.onStreamInEntityId unknown pool id: ${entity.poolId}`)
@@ -114,7 +115,7 @@ export class Entity {
   }
 
   private static onStreamOutEntityId(entityId: number) {
-    const entity = Entity.entities[entityId]
+    const entity = Entity.__entities[entityId]
 
     if (!entity) {
       log.error(`Entity.onStreamOutEntityId unknown entity: ${entityId}`)
@@ -127,7 +128,7 @@ export class Entity {
     }
     entity._streamed = false
 
-    const pool = this.pools[entity.poolId]
+    const pool = this.__pools[entity.poolId]
 
     if (!pool) {
       log.error(`Entity.onStreamInEntityId unknown pool id: ${entity.poolId}`)
@@ -145,12 +146,12 @@ export class Entity {
   private _valid = true
   private _pos: alt.IVector3
 
-  public readonly id = Entity.entityIdProvider.getNext()
+  public readonly id = Entity.__entityIdProvider.getNext()
   public readonly poolId: number
   public readonly streamRange: number
 
   constructor(pos: alt.IVector3, streamRange = 50) {
-    const { poolId } = this.constructor as typeof Entity
+    const { __poolId: poolId } = this.constructor as typeof Entity
 
     if (poolId == null)
       throw new UndefinedEntityPoolError(this.constructor)
@@ -159,7 +160,7 @@ export class Entity {
     this._pos = pos
     this.streamRange = streamRange
 
-    Entity.entities[this.id] = this
+    Entity.__entities[this.id] = this
     Streamer.instance.addEntity(this)
   }
 
@@ -186,11 +187,11 @@ export class Entity {
   @validEntity()
   public destroy(): void {
     this._valid = false
-    delete Entity.entities[this.id]
-    Entity.entityIdProvider.freeId(this.id)
+    delete Entity.__entities[this.id]
+    Entity.__entityIdProvider.freeId(this.id)
     Streamer.instance.removeEntity(this)
 
     if (this._streamed)
-      Entity.pools[this.poolId].onStreamOut(this)
+      Entity.__pools[this.poolId].onStreamOut(this)
   }
 }
