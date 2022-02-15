@@ -656,27 +656,27 @@ var UndefinedEntityPoolError = class extends Error {
 var log = new Logger2("Entity");
 var Entity = class {
   static get maxStreamedIn() {
-    if (this.poolId == null || this._maxStreamedIn == null)
+    if (this.__poolId == null || this.__maxStreamedIn == null)
       throw new UndefinedEntityPoolError(this);
-    return this._maxStreamedIn;
+    return this.__maxStreamedIn;
   }
   static set maxStreamedIn(value) {
-    if (this.poolId == null)
+    if (this.__poolId == null)
       throw new UndefinedEntityPoolError(this);
     if (value < 0)
       throw new Error("Entity.maxStreamedIn must be > 0");
-    this._maxStreamedIn = value;
-    Streamer.instance.setPoolMaxStreamedIn(this.poolId, value);
+    this.__maxStreamedIn = value;
+    Streamer.instance.setPoolMaxStreamedIn(this.__poolId, value);
   }
   static getStreamedIn() {
-    if (this.poolId == null || this._streamedIn == null)
+    if (this.__poolId == null || this.__streamedIn == null)
       throw new UndefinedEntityPoolError(this);
-    return this._streamedIn;
+    return this.__streamedIn;
   }
   static defineEntityPool(options = {}) {
     if (this === Entity)
       throw new Error("Entity.defineEntityPool cannot be called on Entity class, call it on your class extended from Entity");
-    if (this.poolId != null)
+    if (this.__poolId != null)
       throw new Error(`${this.name} pool already defined`);
     const {
       maxStreamedIn = 50,
@@ -685,7 +685,7 @@ var Entity = class {
       onStreamOut = () => {
       }
     } = options;
-    const id = Entity.poolIdProvider.getNext();
+    const id = Entity.__poolIdProvider.getNext();
     Streamer.instance.addPool({
       id,
       maxStreamedIn
@@ -695,16 +695,16 @@ var Entity = class {
       onStreamIn,
       onStreamOut
     };
-    Entity.pools[id] = pool;
-    this.poolId = id;
-    this._maxStreamedIn = maxStreamedIn;
-    this._streamedIn = pool.streamedIn;
+    Entity.__pools[id] = pool;
+    this.__poolId = id;
+    this.__maxStreamedIn = maxStreamedIn;
+    this.__streamedIn = pool.streamedIn;
   }
   static getByID(id) {
-    return Entity.entities[id] ?? null;
+    return Entity.__entities[id] ?? null;
   }
   static onStreamInEntityId(entityId) {
-    const entity = Entity.entities[entityId];
+    const entity = Entity.__entities[entityId];
     if (!entity) {
       log.error(`Entity.onStreamIn unknown entity: ${entityId}`);
       return;
@@ -714,7 +714,7 @@ var Entity = class {
       return;
     }
     entity._streamed = true;
-    const pool = this.pools[entity.poolId];
+    const pool = this.__pools[entity.poolId];
     if (!pool) {
       log.error(`Entity.onStreamInEntityId unknown pool id: ${entity.poolId}`);
       return;
@@ -723,7 +723,7 @@ var Entity = class {
     pool.streamedIn.push(entity);
   }
   static onStreamOutEntityId(entityId) {
-    const entity = Entity.entities[entityId];
+    const entity = Entity.__entities[entityId];
     if (!entity) {
       log.error(`Entity.onStreamOutEntityId unknown entity: ${entityId}`);
       return;
@@ -733,7 +733,7 @@ var Entity = class {
       return;
     }
     entity._streamed = false;
-    const pool = this.pools[entity.poolId];
+    const pool = this.__pools[entity.poolId];
     if (!pool) {
       log.error(`Entity.onStreamInEntityId unknown pool id: ${entity.poolId}`);
       return;
@@ -744,17 +744,17 @@ var Entity = class {
   _streamed = false;
   _valid = true;
   _pos;
-  id = Entity.entityIdProvider.getNext();
+  id = Entity.__entityIdProvider.getNext();
   poolId;
   streamRange;
   constructor(pos, streamRange = 50) {
-    const { poolId } = this.constructor;
+    const { __poolId: poolId } = this.constructor;
     if (poolId == null)
       throw new UndefinedEntityPoolError(this.constructor);
     this.poolId = poolId;
     this._pos = pos;
     this.streamRange = streamRange;
-    Entity.entities[this.id] = this;
+    Entity.__entities[this.id] = this;
     Streamer.instance.addEntity(this);
   }
   get valid() {
@@ -772,20 +772,20 @@ var Entity = class {
   }
   destroy() {
     this._valid = false;
-    delete Entity.entities[this.id];
-    Entity.entityIdProvider.freeId(this.id);
+    delete Entity.__entities[this.id];
+    Entity.__entityIdProvider.freeId(this.id);
     Streamer.instance.removeEntity(this);
     if (this._streamed)
-      Entity.pools[this.poolId].onStreamOut(this);
+      Entity.__pools[this.poolId].onStreamOut(this);
   }
 };
-__publicField(Entity, "poolId", null);
-__publicField(Entity, "_maxStreamedIn", null);
-__publicField(Entity, "_streamedIn", null);
-__publicField(Entity, "entityIdProvider", new IdProvider());
-__publicField(Entity, "poolIdProvider", new IdProvider());
-__publicField(Entity, "entities", {});
-__publicField(Entity, "pools", {});
+__publicField(Entity, "__poolId", null);
+__publicField(Entity, "__maxStreamedIn", null);
+__publicField(Entity, "__streamedIn", null);
+__publicField(Entity, "__entityIdProvider", new IdProvider());
+__publicField(Entity, "__poolIdProvider", new IdProvider());
+__publicField(Entity, "__entities", {});
+__publicField(Entity, "__pools", {});
 __decorateClass([
   validEntity()
 ], Entity.prototype, "pos", 1);

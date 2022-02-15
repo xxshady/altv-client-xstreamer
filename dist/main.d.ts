@@ -8,13 +8,13 @@ interface IEntityPoolOptions<TEntity extends Entity = Entity> {
 	onStreamOut?: (entity: TEntity) => void;
 }
 export declare class Entity {
-	private static poolId;
-	private static _maxStreamedIn;
-	private static _streamedIn;
-	private static readonly entityIdProvider;
-	private static readonly poolIdProvider;
-	private static readonly entities;
-	private static readonly pools;
+	private static __poolId;
+	private static __maxStreamedIn;
+	private static __streamedIn;
+	private static readonly __entityIdProvider;
+	private static readonly __poolIdProvider;
+	private static readonly __entities;
+	private static readonly __pools;
 	static get maxStreamedIn(): number;
 	static set maxStreamedIn(value: number);
 	static getStreamedIn<T extends typeof Entity>(this: T): InstanceType<T>[];
