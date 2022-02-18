@@ -22,9 +22,9 @@ export declare class Entity {
 	static getByID(id: number): Entity | null;
 	private static onStreamInEntityId;
 	private static onStreamOutEntityId;
-	private _streamed;
-	private _valid;
-	private _pos;
+	private __streamed;
+	private __valid;
+	private __pos;
 	readonly id: number;
 	readonly poolId: number;
 	readonly streamRange: number;

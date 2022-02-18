@@ -709,11 +709,11 @@ var Entity = class {
       log.error(`Entity.onStreamIn unknown entity: ${entityId}`);
       return;
     }
-    if (entity._streamed) {
+    if (entity.__streamed) {
       log.error(`Entity.onStreamInEntityId already streamed in: ${entityId}`);
       return;
     }
-    entity._streamed = true;
+    entity.__streamed = true;
     const pool = this.__pools[entity.poolId];
     if (!pool) {
       log.error(`Entity.onStreamInEntityId unknown pool id: ${entity.poolId}`);
@@ -728,11 +728,11 @@ var Entity = class {
       log.error(`Entity.onStreamOutEntityId unknown entity: ${entityId}`);
       return;
     }
-    if (!entity._streamed) {
+    if (!entity.__streamed) {
       log.error(`Entity.onStreamOutEntityId already streamed out: ${entityId}`);
       return;
     }
-    entity._streamed = false;
+    entity.__streamed = false;
     const pool = this.__pools[entity.poolId];
     if (!pool) {
       log.error(`Entity.onStreamInEntityId unknown pool id: ${entity.poolId}`);
@@ -741,9 +741,9 @@ var Entity = class {
     pool.onStreamOut(entity);
     pool.streamedIn.splice(pool.streamedIn.indexOf(entity), 1);
   }
-  _streamed = false;
-  _valid = true;
-  _pos;
+  __streamed = false;
+  __valid = true;
+  __pos;
   id = Entity.__entityIdProvider.getNext();
   poolId;
   streamRange;
@@ -752,30 +752,30 @@ var Entity = class {
     if (poolId == null)
       throw new UndefinedEntityPoolError(this.constructor);
     this.poolId = poolId;
-    this._pos = pos;
+    this.__pos = pos;
     this.streamRange = streamRange;
     Entity.__entities[this.id] = this;
     Streamer.instance.addEntity(this);
   }
   get valid() {
-    return this._valid;
+    return this.__valid;
   }
   get pos() {
-    return this._pos;
+    return this.__pos;
   }
   set pos(value) {
-    this._pos = value;
+    this.__pos = value;
     Streamer.instance.setEntityPos(this, value);
   }
   get streamed() {
-    return this._streamed;
+    return this.__streamed;
   }
   destroy() {
-    this._valid = false;
+    this.__valid = false;
     delete Entity.__entities[this.id];
     Entity.__entityIdProvider.freeId(this.id);
     Streamer.instance.removeEntity(this);
-    if (this._streamed)
+    if (this.__streamed)
       Entity.__pools[this.poolId].onStreamOut(this);
   }
 };
