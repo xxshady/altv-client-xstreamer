@@ -97,11 +97,11 @@ export class Entity {
       return
     }
 
-    if (entity._streamed) {
+    if (entity.__streamed) {
       log.error(`Entity.onStreamInEntityId already streamed in: ${entityId}`)
       return
     }
-    entity._streamed = true
+    entity.__streamed = true
 
     const pool = this.__pools[entity.poolId]
 
@@ -122,11 +122,11 @@ export class Entity {
       return
     }
 
-    if (!entity._streamed) {
+    if (!entity.__streamed) {
       log.error(`Entity.onStreamOutEntityId already streamed out: ${entityId}`)
       return
     }
-    entity._streamed = false
+    entity.__streamed = false
 
     const pool = this.__pools[entity.poolId]
 
@@ -142,9 +142,9 @@ export class Entity {
     )
   }
 
-  private _streamed = false
-  private _valid = true
-  private _pos: alt.IVector3
+  private __streamed = false
+  private __valid = true
+  private __pos: alt.IVector3
 
   public readonly id = Entity.__entityIdProvider.getNext()
   public readonly poolId: number
@@ -157,7 +157,7 @@ export class Entity {
       throw new UndefinedEntityPoolError(this.constructor)
 
     this.poolId = poolId
-    this._pos = pos
+    this.__pos = pos
     this.streamRange = streamRange
 
     Entity.__entities[this.id] = this
@@ -165,33 +165,33 @@ export class Entity {
   }
 
   public get valid(): boolean {
-    return this._valid
+    return this.__valid
   }
 
   // @validEntity()
   public get pos(): alt.IVector3 {
-    return this._pos
+    return this.__pos
   }
 
   @validEntity()
   public set pos(value: alt.IVector3) {
-    this._pos = value
+    this.__pos = value
     Streamer.instance.setEntityPos(this, value)
   }
 
   @validEntity()
   public get streamed(): boolean {
-    return this._streamed
+    return this.__streamed
   }
 
   @validEntity()
   public destroy(): void {
-    this._valid = false
+    this.__valid = false
     delete Entity.__entities[this.id]
     Entity.__entityIdProvider.freeId(this.id)
     Streamer.instance.removeEntity(this)
 
-    if (this._streamed)
+    if (this.__streamed)
       Entity.__pools[this.poolId].onStreamOut(this)
   }
 }
