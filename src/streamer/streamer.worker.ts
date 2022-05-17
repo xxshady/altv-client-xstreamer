@@ -45,7 +45,7 @@ class StreamWorker {
       const entity = this.entities[entityId]
 
       if (!entity) {
-        this.logError(`[destroyEntity] id: ${entityId} not found`)
+        // this.logError(`[destroyEntity] id: ${entityId} not found`)
         return
       }
 
