@@ -4,6 +4,6 @@ export enum WorkerFromEvents {
 }
 
 export interface IWorkerFromEvent {
-  [WorkerFromEvents.StreamResult]: (streamOutEntityIds: number[], streamInEntityIds: number[], mainStream: boolean) => void
+  [WorkerFromEvents.StreamResult]: (streamOutEntityIds: number[], streamInEntityIds: number[]) => void
   [WorkerFromEvents.EntitiesCreated]: () => void
 }

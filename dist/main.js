@@ -453,7 +453,7 @@ __decorate([
 var Logger2 = class extends Logger {
   constructor(name) {
     super(`client-xstreamer > ${name}`, {
-      logLevel: false ? LogLevel.Info : LogLevel.Warn
+      logLevel: true ? LogLevel.Info : LogLevel.Warn
     });
   }
 };
@@ -484,14 +484,26 @@ var _Streamer = class {
     return _Streamer._instance ??= new _Streamer();
   }
   mainStreamSleepMs = 20;
-  eventHandlers = {
-    ["streamResult" /* StreamResult */]: (streamOut, streamIn, mainStream) => {
-      for (let i = 0; i < streamOut.length; ++i)
-        this.streamOutEntityHandler(streamOut[i]);
-      for (let i = 0; i < streamIn.length; ++i)
-        this.streamInEntityHandler(streamIn[i]);
-      if (mainStream)
-        alt3.setTimeout(() => this.runMainStream(), this.mainStreamSleepMs);
+  workerEventHandlers = {
+    ["streamResult" /* StreamResult */]: (streamOut, streamIn) => {
+      for (let i = 0; i < streamOut.length; ++i) {
+        const entityId = streamOut[i];
+        if (this.thisTickDestroyedEntities[entityId]) {
+          this.log.warn(`destroyed entity: ${entityId} streamOut`);
+          continue;
+        }
+        this.streamOutEntityHandler(entityId);
+      }
+      for (let i = 0; i < streamIn.length; ++i) {
+        const entityId = streamIn[i];
+        if (this.thisTickDestroyedEntities[entityId]) {
+          this.log.warn(`destroyed entity: ${entityId} streamIn`);
+          continue;
+        }
+        this.streamInEntityHandler(entityId);
+      }
+      this.thisTickDestroyedEntities = {};
+      alt3.setTimeout(() => this.runMainStream(), this.mainStreamSleepMs);
     },
     ["entitiesCreated" /* EntitiesCreated */]: () => {
       const { entityCreateQueue } = this;
@@ -502,7 +514,6 @@ var _Streamer = class {
     }
   };
   localPlayer = alt3.Player.local;
-  oldPos = { x: 0, y: 0 };
   streamInEntityHandler;
   streamOutEntityHandler;
   entityCreateQueue = {
@@ -512,6 +523,7 @@ var _Streamer = class {
     started: false
   };
   log = new Logger2("streamer");
+  thisTickDestroyedEntities = {};
   constructor() {
     worker.start();
     this.initEvents();
@@ -545,8 +557,15 @@ var _Streamer = class {
     });
     this.startEntityCreateQueue().catch(this.log.error);
   }
-  removeEntity(entity) {
-    this.emitWorker("destroyEntity" /* DestroyEntity */, entity.id);
+  removeEntity({ id }) {
+    const { entities } = this.entityCreateQueue;
+    const idx = entities.findIndex((e) => e.id === id);
+    if (idx !== -1)
+      entities.splice(idx, 1);
+    if (this.thisTickDestroyedEntities[id])
+      return;
+    this.thisTickDestroyedEntities[id] = true;
+    this.emitWorker("destroyEntity" /* DestroyEntity */, id);
   }
   setEntityPos(entity, value) {
     this.emitWorker("updateEntity" /* UpdateEntity */, {
@@ -558,22 +577,18 @@ var _Streamer = class {
     });
   }
   initEvents() {
-    for (const eventName in this.eventHandlers)
-      worker.on(eventName, this.eventHandlers[eventName]);
+    for (const eventName in this.workerEventHandlers)
+      worker.on(eventName, this.workerEventHandlers[eventName]);
   }
   emitWorker(eventName, ...args) {
     worker.emit(eventName, ...args);
   }
   runMainStream() {
-    const {
-      pos: { x, y }
-    } = this.localPlayer;
-    if (x === this.oldPos.x && y === this.oldPos.y) {
-      alt3.setTimeout(() => this.runMainStream(), this.mainStreamSleepMs);
-      return;
-    }
-    this.oldPos = { x, y };
-    this.emitWorker("stream" /* Stream */, this.oldPos);
+    const { pos } = this.localPlayer;
+    this.emitWorker("stream" /* Stream */, {
+      x: pos.x,
+      y: pos.y
+    });
   }
   async startEntityCreateQueue() {
     const { entityCreateQueue } = this;
@@ -585,11 +600,8 @@ var _Streamer = class {
       const entitiesToSend = entities.splice(0, chunkSize);
       if (entitiesToSend.length < 1)
         return;
-      const label = `entitiesCreate (${entitiesToSend[entitiesToSend.length - 1].id})`;
-      const start = +new Date();
       this.emitWorker("createEntities" /* CreateEntities */, entitiesToSend);
       await this.waitEntitiesCreate();
-      this.log.log(label, "ms:", +new Date() - start);
     }
     entityCreateQueue.started = false;
   }
@@ -667,6 +679,10 @@ var Entity = class {
       throw new Error("Entity.maxStreamedIn must be > 0");
     this.__maxStreamedIn = value;
     Streamer.instance.setPoolMaxStreamedIn(this.__poolId, value);
+    const pool = Entity.__pools[this.__poolId];
+    if (!pool)
+      throw new Error(`Entity set maxStreamedIn unknown pool id: ${this.__poolId}`);
+    pool.maxStreamedIn = this.__poolId;
   }
   static getStreamedIn() {
     if (this.__poolId == null || this.__streamedIn == null)
@@ -692,6 +708,7 @@ var Entity = class {
     });
     const pool = {
       streamedIn: [],
+      maxStreamedIn,
       onStreamIn,
       onStreamOut
     };
@@ -717,6 +734,10 @@ var Entity = class {
     const pool = this.__pools[entity.poolId];
     if (!pool) {
       log.error(`Entity.onStreamInEntityId unknown pool id: ${entity.poolId}`);
+      return;
+    }
+    if (pool.streamedIn.length >= pool.maxStreamedIn) {
+      log.error(`Entity.onStreamInEntityId streamedIn.length == pool maxStreamed (${pool.maxStreamedIn})`);
       return;
     }
     pool.onStreamIn(entity);
@@ -756,6 +777,7 @@ var Entity = class {
     this.streamRange = streamRange;
     Entity.__entities[this.id] = this;
     Streamer.instance.addEntity(this);
+    log.log(`create entity: ${this.id}`);
   }
   get valid() {
     return this.__valid;
@@ -772,11 +794,12 @@ var Entity = class {
   }
   destroy() {
     this.__valid = false;
+    if (this.__streamed)
+      Entity.onStreamOutEntityId(this.id);
     delete Entity.__entities[this.id];
     Entity.__entityIdProvider.freeId(this.id);
     Streamer.instance.removeEntity(this);
-    if (this.__streamed)
-      Entity.__pools[this.poolId].onStreamOut(this);
+    log.log(`destroy entity: ${this.id}`);
   }
 };
 __publicField(Entity, "__poolId", null);

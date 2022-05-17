@@ -24,16 +24,36 @@ export class Streamer {
 
   private readonly mainStreamSleepMs = 20
 
-  private readonly eventHandlers: { [K in WorkerFromEvents]: IWorkerFromEvent[K] } = {
-    [WorkerFromEvents.StreamResult]: (streamOut, streamIn, mainStream) => {
-      for (let i = 0; i < streamOut.length; ++i)
-        this.streamOutEntityHandler(streamOut[i])
+  private readonly workerEventHandlers: { [K in WorkerFromEvents]: IWorkerFromEvent[K] } = {
+    [WorkerFromEvents.StreamResult]: (streamOut, streamIn) => {
+      // if (streamOut.length > 0 || streamIn.length > 0)
+      // this.log.moreInfo("[StreamResult]", "out:", streamOut, "in:", streamIn, "main:", mainStream)
+      // this.log.moreInfo("this.thisTickDestroyedEntities:", this.thisTickDestroyedEntities)
 
-      for (let i = 0; i < streamIn.length; ++i)
-        this.streamInEntityHandler(streamIn[i])
+      for (let i = 0; i < streamOut.length; ++i) {
+        const entityId = streamOut[i]
 
-      if (mainStream)
-        alt.setTimeout(() => this.runMainStream(), this.mainStreamSleepMs)
+        if (this.thisTickDestroyedEntities[entityId]) {
+          this.log.warn(`destroyed entity: ${entityId} streamOut`)
+          continue
+        }
+        this.streamOutEntityHandler(entityId)
+      }
+
+      for (let i = 0; i < streamIn.length; ++i) {
+        const entityId = streamIn[i]
+
+        if (this.thisTickDestroyedEntities[entityId]) {
+          this.log.warn(`destroyed entity: ${entityId} streamIn`)
+          continue
+        }
+
+        this.streamInEntityHandler(entityId)
+      }
+
+      this.thisTickDestroyedEntities = {}
+
+      alt.setTimeout(() => this.runMainStream(), this.mainStreamSleepMs)
     },
 
     [WorkerFromEvents.EntitiesCreated]: () => {
@@ -47,7 +67,6 @@ export class Streamer {
   }
 
   private readonly localPlayer = alt.Player.local
-  private oldPos: alt.IVector2 = { x: 0, y: 0 }
 
   private streamInEntityHandler!: (entityId: number) => void
   private streamOutEntityHandler!: (entityId: number) => void
@@ -60,6 +79,8 @@ export class Streamer {
   }
 
   private readonly log = new Logger("streamer")
+
+  private thisTickDestroyedEntities: Record<Entity["id"], true> = {}
 
   constructor() {
     worker.start()
@@ -106,8 +127,16 @@ export class Streamer {
     this.startEntityCreateQueue().catch(this.log.error)
   }
 
-  public removeEntity(entity: Entity): void {
-    this.emitWorker(WorkerIntoEvents.DestroyEntity, entity.id)
+  public removeEntity({ id }: Entity): void {
+    const { entities } = this.entityCreateQueue
+    const idx = entities.findIndex(e => e.id === id)
+    if (idx !== -1)
+      entities.splice(idx, 1)
+
+    if (this.thisTickDestroyedEntities[id]) return
+    this.thisTickDestroyedEntities[id] = true
+
+    this.emitWorker(WorkerIntoEvents.DestroyEntity, id)
   }
 
   public setEntityPos(entity: Entity, value: alt.IVector2): void {
@@ -125,8 +154,8 @@ export class Streamer {
   // #region worker event methods
 
   private initEvents() {
-    for (const eventName in this.eventHandlers)
-      worker.on(eventName, this.eventHandlers[eventName as WorkerFromEvents])
+    for (const eventName in this.workerEventHandlers)
+      worker.on(eventName, this.workerEventHandlers[eventName as WorkerFromEvents])
   }
 
   private emitWorker <K extends WorkerIntoEvents>(eventName: K, ...args: Parameters<IWorkerIntoEvent[K]>) {
@@ -136,17 +165,12 @@ export class Streamer {
   // #endregion
 
   private runMainStream() {
-    const {
-      pos: { x, y },
-    } = this.localPlayer
+    const { pos } = this.localPlayer
 
-    if (x === this.oldPos.x && y === this.oldPos.y) {
-      alt.setTimeout(() => this.runMainStream(), this.mainStreamSleepMs)
-      return
-    }
-    this.oldPos = { x, y }
-
-    this.emitWorker(WorkerIntoEvents.Stream, this.oldPos)
+    this.emitWorker(WorkerIntoEvents.Stream, {
+      x: pos.x,
+      y: pos.y,
+    })
   }
 
   private async startEntityCreateQueue() {
@@ -161,13 +185,13 @@ export class Streamer {
       const entitiesToSend = entities.splice(0, chunkSize)
       if (entitiesToSend.length < 1) return
 
-      const label = `entitiesCreate (${entitiesToSend[entitiesToSend.length - 1].id})`
-      const start = +new Date()
+      // const label = `entitiesCreate (${entitiesToSend[entitiesToSend.length - 1].id})`
+      // const start = +new Date()
 
       this.emitWorker(WorkerIntoEvents.CreateEntities, entitiesToSend)
       await this.waitEntitiesCreate()
 
-      this.log.log(label, "ms:", +new Date() - start)
+      // this.log.log(label, "ms:", +new Date() - start)
     }
 
     entityCreateQueue.started = false

@@ -33,7 +33,6 @@ var StreamWorker = class {
         this.addEntityIntoArray(entity);
         this.entities[id] = entity;
       }
-      this.runStreamProcess();
       this.emitClient("entitiesCreated" /* EntitiesCreated */);
     },
     ["destroyEntity" /* DestroyEntity */]: (entityId) => {
@@ -44,7 +43,6 @@ var StreamWorker = class {
       }
       delete this.entities[entityId];
       this.regenerateEntityArray();
-      this.runStreamProcess();
     },
     ["createPool" /* CreatePool */]: ({ id, maxStreamedIn }) => {
       if (this.pools[id]) {
@@ -57,8 +55,7 @@ var StreamWorker = class {
       };
     },
     ["stream" /* Stream */]: (streamingPos) => {
-      this.lastStreamingPos = streamingPos;
-      this.runStreamProcess(streamingPos, true);
+      this.runStreamProcess(streamingPos);
     },
     ["updatePool" /* UpdatePool */]: (poolUpdate) => {
       const pool = this.pools[poolUpdate.id];
@@ -69,10 +66,8 @@ var StreamWorker = class {
       const {
         maxStreamedIn
       } = poolUpdate;
-      if (maxStreamedIn != null) {
+      if (maxStreamedIn != null)
         pool.maxStreamedIn = maxStreamedIn;
-        this.runStreamProcess();
-      }
     },
     ["updateEntity" /* UpdateEntity */]: (entityUpdate) => {
       const entity = this.entities[entityUpdate.id];
@@ -83,17 +78,14 @@ var StreamWorker = class {
       const {
         pos
       } = entityUpdate;
-      if (pos != null) {
+      if (pos != null)
         entity.pos = pos;
-        this.runStreamProcess();
-      }
     }
   };
   pools = {};
   entities = {};
   entityArray = [];
-  lastStreamingPos = { x: 0, y: 0 };
-  log = false ? (...args) => alt.log("~cl~[streamer-worker]~w~", ...args) : () => {
+  log = true ? (...args) => alt.log("~cl~[streamer-worker]~w~", ...args) : () => {
   };
   constructor() {
     this.initEvents();
@@ -185,12 +177,12 @@ var StreamWorker = class {
     arrEntity.streamed = false;
     streamInIds.push(entity.id);
   }
-  runStreamProcess(streamingPos = this.lastStreamingPos, mainStream = false) {
+  runStreamProcess(streamingPos) {
     const {
       streamIn,
       streamOut
     } = this.streamProcess(streamingPos);
-    this.emitClient("streamResult" /* StreamResult */, streamOut, streamIn, mainStream);
+    this.emitClient("streamResult" /* StreamResult */, streamOut, streamIn);
   }
 };
 new StreamWorker();

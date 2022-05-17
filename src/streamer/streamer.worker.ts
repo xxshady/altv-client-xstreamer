@@ -38,7 +38,6 @@ class StreamWorker {
         this.entities[id] = entity
       }
 
-      this.runStreamProcess()
       this.emitClient(WorkerFromEvents.EntitiesCreated)
     },
 
@@ -52,7 +51,6 @@ class StreamWorker {
 
       delete this.entities[entityId]
       this.regenerateEntityArray()
-      this.runStreamProcess()
     },
 
     [WorkerIntoEvents.CreatePool]: ({ id, maxStreamedIn }) => {
@@ -68,8 +66,7 @@ class StreamWorker {
     },
 
     [WorkerIntoEvents.Stream]: (streamingPos) => {
-      this.lastStreamingPos = streamingPos
-      this.runStreamProcess(streamingPos, true)
+      this.runStreamProcess(streamingPos)
     },
 
     [WorkerIntoEvents.UpdatePool]: (poolUpdate) => {
@@ -84,10 +81,8 @@ class StreamWorker {
         maxStreamedIn,
       } = poolUpdate
 
-      if (maxStreamedIn != null) {
+      if (maxStreamedIn != null)
         pool.maxStreamedIn = maxStreamedIn
-        this.runStreamProcess()
-      }
     },
 
     [WorkerIntoEvents.UpdateEntity]: (entityUpdate) => {
@@ -102,17 +97,14 @@ class StreamWorker {
         pos,
       } = entityUpdate
 
-      if (pos != null) {
+      if (pos != null)
         entity.pos = pos
-        this.runStreamProcess()
-      }
     },
   }
 
   private readonly pools: Record<number, IWorkerEntityPool> = {}
   private readonly entities: Record<number, IWorkerEntity> = {}
   private entityArray: IWorkerEntityArrElement[] = []
-  private lastStreamingPos: IVector2 = { x: 0, y: 0 }
 
   private readonly log = (___DEVMODE
     ? (...args: unknown[]) => alt.log("~cl~[streamer-worker]~w~", ...args)
@@ -259,7 +251,7 @@ class StreamWorker {
     streamInIds.push(entity.id)
   }
 
-  private runStreamProcess(streamingPos = this.lastStreamingPos, mainStream = false) {
+  private runStreamProcess(streamingPos: IVector2) {
     // const start = +new Date()
     const {
       streamIn,
@@ -275,7 +267,6 @@ class StreamWorker {
       WorkerFromEvents.StreamResult,
       streamOut,
       streamIn,
-      mainStream,
     )
   }
 }

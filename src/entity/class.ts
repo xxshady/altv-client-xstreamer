@@ -42,6 +42,12 @@ export class Entity {
 
     this.__maxStreamedIn = value
     Streamer.instance.setPoolMaxStreamedIn(this.__poolId, value)
+
+    const pool = Entity.__pools[this.__poolId]
+    if (!pool)
+      throw new Error(`Entity set maxStreamedIn unknown pool id: ${this.__poolId}`)
+
+    pool.maxStreamedIn = this.__poolId
   }
 
   public static getStreamedIn<T extends typeof Entity>(this: T): InstanceType<T>[] {
@@ -73,6 +79,7 @@ export class Entity {
 
     const pool: IEntityPool<InstanceType<T>> = {
       streamedIn: [],
+      maxStreamedIn,
       onStreamIn,
       onStreamOut,
     }
@@ -107,6 +114,11 @@ export class Entity {
 
     if (!pool) {
       log.error(`Entity.onStreamInEntityId unknown pool id: ${entity.poolId}`)
+      return
+    }
+
+    if (pool.streamedIn.length >= pool.maxStreamedIn) {
+      log.error(`Entity.onStreamInEntityId streamedIn.length == pool maxStreamed (${pool.maxStreamedIn})`)
       return
     }
 
@@ -162,6 +174,8 @@ export class Entity {
 
     Entity.__entities[this.id] = this
     Streamer.instance.addEntity(this)
+
+    log.log(`create entity: ${this.id}`)
   }
 
   public get valid(): boolean {
@@ -187,11 +201,14 @@ export class Entity {
   @validEntity()
   public destroy(): void {
     this.__valid = false
+
+    if (this.__streamed)
+      Entity.onStreamOutEntityId(this.id)
+
     delete Entity.__entities[this.id]
     Entity.__entityIdProvider.freeId(this.id)
     Streamer.instance.removeEntity(this)
 
-    if (this.__streamed)
-      Entity.__pools[this.poolId].onStreamOut(this)
+    log.log(`destroy entity: ${this.id}`)
   }
 }
