@@ -85,7 +85,7 @@ var StreamWorker = class {
   pools = {};
   entities = {};
   entityArray = [];
-  log = true ? (...args) => alt.log("~cl~[streamer-worker]~w~", ...args) : () => {
+  log = false ? (...args) => alt.log("~cl~[streamer-worker]~w~", ...args) : () => {
   };
   constructor() {
     this.initEvents();
