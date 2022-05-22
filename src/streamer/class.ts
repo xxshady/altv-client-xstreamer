@@ -14,6 +14,7 @@ import type {
 } from "./types"
 import worker from "worker!./streamer.worker"
 import { Logger } from "@/logger"
+import { WorkerEventQueue } from "./worker-event-queue"
 
 export class Streamer {
   private static _instance: Streamer | null = null
@@ -26,8 +27,8 @@ export class Streamer {
 
   private readonly workerEventHandlers: { [K in WorkerFromEvents]: IWorkerFromEvent[K] } = {
     [WorkerFromEvents.StreamResult]: (streamOut, streamIn) => {
-      // if (streamOut.length > 0 || streamIn.length > 0)
-      // this.log.moreInfo("[StreamResult]", "out:", streamOut, "in:", streamIn, "main:", mainStream)
+      if (streamOut.length > 0 || streamIn.length > 0)
+        this.log.moreInfo("[StreamResult]", "out:", streamOut, "in:", streamIn)
       // this.log.moreInfo("this.thisTickDestroyedEntities:", this.thisTickDestroyedEntities)
 
       for (let i = 0; i < streamOut.length; ++i) {
@@ -53,6 +54,7 @@ export class Streamer {
 
       this.thisTickDestroyedEntities = {}
 
+      this.workerEventQueue.send()
       alt.setTimeout(() => this.runMainStream(), this.mainStreamSleepMs)
     },
 
@@ -81,6 +83,8 @@ export class Streamer {
   private readonly log = new Logger("streamer")
 
   private thisTickDestroyedEntities: Record<Entity["id"], true> = {}
+
+  private readonly workerEventQueue = new WorkerEventQueue(worker)
 
   constructor() {
     worker.start()
@@ -159,6 +163,44 @@ export class Streamer {
   }
 
   private emitWorker <K extends WorkerIntoEvents>(eventName: K, ...args: Parameters<IWorkerIntoEvent[K]>) {
+    // // TEST
+    // if (eventName !== WorkerIntoEvents.Stream) {
+    //   const logArgs = [...args]
+    //   // if (eventName === WorkerIntoEvents.CreateEntities) {
+    //   //   let [arr] = logArgs as Parameters<IWorkerIntoEvent["createEntities"]>
+    //   //   arr = [...arr]
+
+    //   //   if ((arr as IWorkerEntityCreate[]).length > 10) {
+    //   //     arr.splice(10)
+    //   //     arr.push("...and more" as any)
+    //   //   }
+
+    //   //   logArgs = [arr] as any
+    //   // }
+    //   this.log.moreInfo("[emitWorker]", eventName, logArgs)
+    // }
+
+    this.workerEventQueue.add(eventName, args)
+  }
+
+  private emitWorkerRaw <K extends WorkerIntoEvents>(eventName: K, ...args: Parameters<IWorkerIntoEvent[K]>) {
+    // TEST
+    // if (eventName !== WorkerIntoEvents.Stream) {
+    //   const logArgs = [...args]
+    //   // if (eventName === WorkerIntoEvents.CreateEntities) {
+    //   //   let [arr] = logArgs as Parameters<IWorkerIntoEvent["createEntities"]>
+    //   //   arr = [...arr]
+
+    //   //   if ((arr as IWorkerEntityCreate[]).length > 10) {
+    //   //     arr.splice(10)
+    //   //     arr.push("...and more" as any)
+    //   //   }
+
+    //   //   logArgs = [arr] as any
+    //   // }
+    //   this.log.moreInfo("[emitWorker]", eventName, logArgs)
+    // }
+
     worker.emit(eventName, ...args)
   }
 
@@ -167,7 +209,7 @@ export class Streamer {
   private runMainStream() {
     const { pos } = this.localPlayer
 
-    this.emitWorker(WorkerIntoEvents.Stream, {
+    this.emitWorkerRaw(WorkerIntoEvents.Stream, {
       x: pos.x,
       y: pos.y,
     })

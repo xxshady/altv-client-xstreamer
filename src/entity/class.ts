@@ -175,7 +175,7 @@ export class Entity {
     Entity.__entities[this.id] = this
     Streamer.instance.addEntity(this)
 
-    log.log(`create entity: ${this.id}`)
+    // log.log(`create entity: ${this.id}`)
   }
 
   public get valid(): boolean {
@@ -209,6 +209,6 @@ export class Entity {
     Entity.__entityIdProvider.freeId(this.id)
     Streamer.instance.removeEntity(this)
 
-    log.log(`destroy entity: ${this.id}`)
+    // log.log(`destroy entity: ${this.id}`)
   }
 }

@@ -38,7 +38,6 @@ var StreamWorker = class {
     ["destroyEntity" /* DestroyEntity */]: (entityId) => {
       const entity = this.entities[entityId];
       if (!entity) {
-        this.logError(`[destroyEntity] id: ${entityId} not found`);
         return;
       }
       delete this.entities[entityId];

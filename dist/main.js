@@ -479,6 +479,24 @@ var IdProvider = class {
 // src/streamer/class.ts
 import * as alt3 from "alt-client";
 import worker from "worker!./streamer.worker";
+
+// src/streamer/worker-event-queue.ts
+var WorkerEventQueue = class {
+  constructor(worker2) {
+    this.worker = worker2;
+  }
+  events = [];
+  add(eventName, args) {
+    this.events.push([eventName, args]);
+  }
+  send() {
+    for (const [name, args] of this.events)
+      this.worker.emit(name, ...args);
+    this.events = [];
+  }
+};
+
+// src/streamer/class.ts
 var _Streamer = class {
   static get instance() {
     return _Streamer._instance ??= new _Streamer();
@@ -486,6 +504,8 @@ var _Streamer = class {
   mainStreamSleepMs = 20;
   workerEventHandlers = {
     ["streamResult" /* StreamResult */]: (streamOut, streamIn) => {
+      if (streamOut.length > 0 || streamIn.length > 0)
+        this.log.moreInfo("[StreamResult]", "out:", streamOut, "in:", streamIn);
       for (let i = 0; i < streamOut.length; ++i) {
         const entityId = streamOut[i];
         if (this.thisTickDestroyedEntities[entityId]) {
@@ -503,6 +523,7 @@ var _Streamer = class {
         this.streamInEntityHandler(entityId);
       }
       this.thisTickDestroyedEntities = {};
+      this.workerEventQueue.send();
       alt3.setTimeout(() => this.runMainStream(), this.mainStreamSleepMs);
     },
     ["entitiesCreated" /* EntitiesCreated */]: () => {
@@ -524,6 +545,7 @@ var _Streamer = class {
   };
   log = new Logger2("streamer");
   thisTickDestroyedEntities = {};
+  workerEventQueue = new WorkerEventQueue(worker);
   constructor() {
     worker.start();
     this.initEvents();
@@ -581,11 +603,14 @@ var _Streamer = class {
       worker.on(eventName, this.workerEventHandlers[eventName]);
   }
   emitWorker(eventName, ...args) {
+    this.workerEventQueue.add(eventName, args);
+  }
+  emitWorkerRaw(eventName, ...args) {
     worker.emit(eventName, ...args);
   }
   runMainStream() {
     const { pos } = this.localPlayer;
-    this.emitWorker("stream" /* Stream */, {
+    this.emitWorkerRaw("stream" /* Stream */, {
       x: pos.x,
       y: pos.y
     });
@@ -777,7 +802,6 @@ var Entity = class {
     this.streamRange = streamRange;
     Entity.__entities[this.id] = this;
     Streamer.instance.addEntity(this);
-    log.log(`create entity: ${this.id}`);
   }
   get valid() {
     return this.__valid;
@@ -799,7 +823,6 @@ var Entity = class {
     delete Entity.__entities[this.id];
     Entity.__entityIdProvider.freeId(this.id);
     Streamer.instance.removeEntity(this);
-    log.log(`destroy entity: ${this.id}`);
   }
 };
 __publicField(Entity, "__poolId", null);
