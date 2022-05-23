@@ -451,9 +451,9 @@ __decorate([
 
 // src/logger/index.ts
 var Logger2 = class extends Logger {
-  constructor(name) {
+  constructor(name, logLevel = true ? LogLevel.Info : LogLevel.Warn) {
     super(`client-xstreamer > ${name}`, {
-      logLevel: false ? LogLevel.Info : LogLevel.Warn
+      logLevel
     });
   }
 };
@@ -503,7 +503,7 @@ var _Streamer = class {
   }
   mainStreamSleepMs = 20;
   workerEventHandlers = {
-    ["streamResult" /* StreamResult */]: (streamOut, streamIn) => {
+    ["streamResult" /* StreamResult */]: async (streamOut, streamIn) => {
       if (streamOut.length > 0 || streamIn.length > 0)
         this.log.moreInfo("[StreamResult]", "out:", streamOut, "in:", streamIn);
       for (let i = 0; i < streamOut.length; ++i) {
@@ -520,6 +520,13 @@ var _Streamer = class {
           this.log.warn(`destroyed entity: ${entityId} streamIn`);
           continue;
         }
+        const nextTick = Entity.getByID(entityId)?.pool.singleEntityStreamInPerTick;
+        if (nextTick == null) {
+          this.log.warn(`unknown entity: ${entityId} streamIn`);
+          continue;
+        }
+        if (nextTick)
+          await alt3.Utils.wait(0);
         this.streamInEntityHandler(entityId);
       }
       this.thisTickDestroyedEntities = {};
@@ -543,7 +550,7 @@ var _Streamer = class {
     sendPromise: null,
     started: false
   };
-  log = new Logger2("streamer");
+  log = new Logger2("streamer", true ? LogLevel.Info : LogLevel.Error);
   thisTickDestroyedEntities = {};
   workerEventQueue = new WorkerEventQueue(worker);
   constructor() {
@@ -570,7 +577,7 @@ var _Streamer = class {
   addEntity(entity) {
     this.entityCreateQueue.entities.push({
       id: entity.id,
-      poolId: entity.poolId,
+      poolId: entity.pool.id,
       pos: {
         x: entity.pos.x,
         y: entity.pos.y
@@ -678,7 +685,7 @@ var validEntity = () => function(target, propertyName, descriptor) {
 function assertValidEntity(entity) {
   if (entity.valid)
     return;
-  throw new Error(`entity id: ${entity.id} (${entity.constructor?.name}) pool id: ${entity.poolId}) was destroyed`);
+  throw new Error(`entity id: ${entity.id} (${entity.constructor?.name}) pool id: ${entity.pool}) was destroyed`);
 }
 
 // src/entity/errors/undefined-pool.ts
@@ -693,34 +700,35 @@ var UndefinedEntityPoolError = class extends Error {
 var log = new Logger2("Entity");
 var Entity = class {
   static get maxStreamedIn() {
-    if (this.__poolId == null || this.__maxStreamedIn == null)
+    if (this.__pool == null || this.__maxStreamedIn == null)
       throw new UndefinedEntityPoolError(this);
     return this.__maxStreamedIn;
   }
   static set maxStreamedIn(value) {
-    if (this.__poolId == null)
+    if (this.__pool == null)
       throw new UndefinedEntityPoolError(this);
     if (value < 0)
       throw new Error("Entity.maxStreamedIn must be > 0");
     this.__maxStreamedIn = value;
-    Streamer.instance.setPoolMaxStreamedIn(this.__poolId, value);
-    const pool = Entity.__pools[this.__poolId];
+    Streamer.instance.setPoolMaxStreamedIn(this.__pool.id, value);
+    const pool = Entity.__pools[this.__pool.id];
     if (!pool)
-      throw new Error(`Entity set maxStreamedIn unknown pool id: ${this.__poolId}`);
-    pool.maxStreamedIn = this.__poolId;
+      throw new Error(`Entity set maxStreamedIn unknown pool id: ${this.__pool}`);
+    pool.maxStreamedIn = this.__maxStreamedIn;
   }
   static getStreamedIn() {
-    if (this.__poolId == null || this.__streamedIn == null)
+    if (this.__pool == null || this.__streamedIn == null)
       throw new UndefinedEntityPoolError(this);
     return this.__streamedIn;
   }
   static defineEntityPool(options = {}) {
     if (this === Entity)
       throw new Error("Entity.defineEntityPool cannot be called on Entity class, call it on your class extended from Entity");
-    if (this.__poolId != null)
+    if (this.__pool != null)
       throw new Error(`${this.name} pool already defined`);
     const {
       maxStreamedIn = 50,
+      singleEntityStreamInPerTick = false,
       onStreamIn = () => {
       },
       onStreamOut = () => {
@@ -732,15 +740,21 @@ var Entity = class {
       maxStreamedIn
     });
     const pool = {
+      id,
       streamedIn: [],
       maxStreamedIn,
+      singleEntityStreamInPerTick,
       onStreamIn,
       onStreamOut
     };
     Entity.__pools[id] = pool;
-    this.__poolId = id;
+    this.__pool = pool;
     this.__maxStreamedIn = maxStreamedIn;
     this.__streamedIn = pool.streamedIn;
+    const logLevel = log.logLevel;
+    log.logLevel = LogLevel.Info;
+    log.log(`class: ${this.name} created entity pool id: ${id}`);
+    log.logLevel = logLevel;
   }
   static getByID(id) {
     return Entity.__entities[id] ?? null;
@@ -756,13 +770,13 @@ var Entity = class {
       return;
     }
     entity.__streamed = true;
-    const pool = this.__pools[entity.poolId];
+    const pool = this.__pools[entity.pool.id];
     if (!pool) {
-      log.error(`Entity.onStreamInEntityId unknown pool id: ${entity.poolId}`);
+      log.error(`Entity.onStreamInEntityId unknown pool id: ${entity.pool}`);
       return;
     }
     if (pool.streamedIn.length >= pool.maxStreamedIn) {
-      log.error(`Entity.onStreamInEntityId streamedIn.length == pool maxStreamed (${pool.maxStreamedIn})`);
+      log.error(`Entity.onStreamInEntityId streamedIn.length == pool (pool id: ${entity.pool})`, `maxStreamed (maxStreamedIn: ${pool.maxStreamedIn})`);
       return;
     }
     pool.onStreamIn(entity);
@@ -779,9 +793,9 @@ var Entity = class {
       return;
     }
     entity.__streamed = false;
-    const pool = this.__pools[entity.poolId];
+    const pool = this.__pools[entity.pool.id];
     if (!pool) {
-      log.error(`Entity.onStreamInEntityId unknown pool id: ${entity.poolId}`);
+      log.error(`Entity.onStreamInEntityId unknown pool id: ${entity.pool}`);
       return;
     }
     pool.onStreamOut(entity);
@@ -791,13 +805,13 @@ var Entity = class {
   __valid = true;
   __pos;
   id = Entity.__entityIdProvider.getNext();
-  poolId;
+  pool;
   streamRange;
   constructor(pos, streamRange = 50) {
-    const { __poolId: poolId } = this.constructor;
-    if (poolId == null)
+    const { __pool } = this.constructor;
+    if (__pool == null)
       throw new UndefinedEntityPoolError(this.constructor);
-    this.poolId = poolId;
+    this.pool = __pool;
     this.__pos = pos;
     this.streamRange = streamRange;
     Entity.__entities[this.id] = this;
@@ -825,7 +839,7 @@ var Entity = class {
     Streamer.instance.removeEntity(this);
   }
 };
-__publicField(Entity, "__poolId", null);
+__publicField(Entity, "__pool", null);
 __publicField(Entity, "__maxStreamedIn", null);
 __publicField(Entity, "__streamedIn", null);
 __publicField(Entity, "__entityIdProvider", new IdProvider());

@@ -2,6 +2,8 @@ import type { Entity } from "../class"
 
 export interface IEntityPoolOptions<TEntity extends Entity = Entity> {
   maxStreamedIn?: number
+  singleEntityStreamInPerTick?: boolean
+
   onStreamIn?: (entity: TEntity) => void
   onStreamOut?: (entity: TEntity) => void
 }

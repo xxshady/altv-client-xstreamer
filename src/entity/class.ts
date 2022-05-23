@@ -1,5 +1,6 @@
-import { Logger } from "@/logger"
 import type * as alt from "alt-client"
+import { Logger } from "@/logger"
+import { LogLevel } from "altv-xlogger"
 import { IdProvider } from "../id-provider"
 import { Streamer } from "../streamer"
 import { init, validEntity } from "./decorators"
@@ -16,7 +17,7 @@ const log = new Logger("Entity")
   },
 })
 export class Entity {
-  private static __poolId: number | null = null
+  private static __pool: IEntityPool | null = null
   private static __maxStreamedIn: number | null = null
   private static __streamedIn: Entity[] | null = null
 
@@ -27,31 +28,31 @@ export class Entity {
   private static readonly __pools: Record<number, IEntityPool> = {}
 
   public static get maxStreamedIn(): number {
-    if (this.__poolId == null || this.__maxStreamedIn == null)
+    if (this.__pool == null || this.__maxStreamedIn == null)
       throw new UndefinedEntityPoolError(this)
 
     return this.__maxStreamedIn
   }
 
   public static set maxStreamedIn(value: number) {
-    if (this.__poolId == null)
+    if (this.__pool == null)
       throw new UndefinedEntityPoolError(this)
 
     if (value < 0)
       throw new Error("Entity.maxStreamedIn must be > 0")
 
     this.__maxStreamedIn = value
-    Streamer.instance.setPoolMaxStreamedIn(this.__poolId, value)
+    Streamer.instance.setPoolMaxStreamedIn(this.__pool.id, value)
 
-    const pool = Entity.__pools[this.__poolId]
+    const pool = Entity.__pools[this.__pool.id]
     if (!pool)
-      throw new Error(`Entity set maxStreamedIn unknown pool id: ${this.__poolId}`)
+      throw new Error(`Entity set maxStreamedIn unknown pool id: ${this.__pool}`)
 
-    pool.maxStreamedIn = this.__poolId
+    pool.maxStreamedIn = this.__maxStreamedIn
   }
 
   public static getStreamedIn<T extends typeof Entity>(this: T): InstanceType<T>[] {
-    if (this.__poolId == null || this.__streamedIn == null)
+    if (this.__pool == null || this.__streamedIn == null)
       throw new UndefinedEntityPoolError(this)
 
     return this.__streamedIn as InstanceType<T>[]
@@ -61,11 +62,12 @@ export class Entity {
     if (this === Entity)
       throw new Error("Entity.defineEntityPool cannot be called on Entity class, call it on your class extended from Entity")
 
-    if (this.__poolId != null)
+    if (this.__pool != null)
       throw new Error(`${this.name} pool already defined`)
 
     const {
       maxStreamedIn = 50,
+      singleEntityStreamInPerTick = false,
       onStreamIn = () => {},
       onStreamOut = () => {},
     } = options
@@ -77,19 +79,24 @@ export class Entity {
       maxStreamedIn,
     })
 
-    const pool: IEntityPool<InstanceType<T>> = {
+    const pool: IEntityPool = {
+      id,
       streamedIn: [],
       maxStreamedIn,
-      onStreamIn,
-      onStreamOut,
+      singleEntityStreamInPerTick,
+      onStreamIn: onStreamIn as IEntityPool["onStreamIn"],
+      onStreamOut: onStreamOut as IEntityPool["onStreamOut"],
     }
 
-    // TODO fix this shit
-    Entity.__pools[id] = pool as unknown as IEntityPool
-
-    this.__poolId = id
+    Entity.__pools[id] = pool
+    this.__pool = pool
     this.__maxStreamedIn = maxStreamedIn
     this.__streamedIn = pool.streamedIn
+
+    const logLevel = log.logLevel
+    log.logLevel = LogLevel.Info
+    log.log(`class: ${this.name} created entity pool id: ${id}`)
+    log.logLevel = logLevel
   }
 
   public static getByID(id: number): Entity | null {
@@ -110,15 +117,18 @@ export class Entity {
     }
     entity.__streamed = true
 
-    const pool = this.__pools[entity.poolId]
+    const pool = this.__pools[entity.pool.id]
 
     if (!pool) {
-      log.error(`Entity.onStreamInEntityId unknown pool id: ${entity.poolId}`)
+      log.error(`Entity.onStreamInEntityId unknown pool id: ${entity.pool}`)
       return
     }
 
     if (pool.streamedIn.length >= pool.maxStreamedIn) {
-      log.error(`Entity.onStreamInEntityId streamedIn.length == pool maxStreamed (${pool.maxStreamedIn})`)
+      log.error(
+        `Entity.onStreamInEntityId streamedIn.length == pool (pool id: ${entity.pool})`,
+        `maxStreamed (maxStreamedIn: ${pool.maxStreamedIn})`,
+      )
       return
     }
 
@@ -140,10 +150,10 @@ export class Entity {
     }
     entity.__streamed = false
 
-    const pool = this.__pools[entity.poolId]
+    const pool = this.__pools[entity.pool.id]
 
     if (!pool) {
-      log.error(`Entity.onStreamInEntityId unknown pool id: ${entity.poolId}`)
+      log.error(`Entity.onStreamInEntityId unknown pool id: ${entity.pool}`)
       return
     }
 
@@ -159,16 +169,16 @@ export class Entity {
   private __pos: alt.IVector3
 
   public readonly id = Entity.__entityIdProvider.getNext()
-  public readonly poolId: number
+  public readonly pool: Readonly<IEntityPool>
   public readonly streamRange: number
 
   constructor(pos: alt.IVector3, streamRange = 50) {
-    const { __poolId: poolId } = this.constructor as typeof Entity
+    const { __pool } = this.constructor as typeof Entity
 
-    if (poolId == null)
+    if (__pool == null)
       throw new UndefinedEntityPoolError(this.constructor)
 
-    this.poolId = poolId
+    this.pool = __pool
     this.__pos = pos
     this.streamRange = streamRange
 

@@ -19,8 +19,8 @@
     "publ": "yarn build && yarn types && yarn publish"
   },
   "devDependencies": {
-    "@altv/types-client": "^2.0.7",
-    "@altv/types-shared": "^1.1.7",
+    "@altv/types-client": "^2.1.8",
+    "@altv/types-shared": "^1.2.5",
     "@altv/types-worker": "^1.0.4",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",

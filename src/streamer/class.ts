@@ -7,7 +7,7 @@ import type {
   IWorkerFromEvent,
   IWorkerIntoEvent,
 } from "./events"
-import type { Entity } from "../entity"
+import { Entity } from "../entity"
 import type {
   IEntityCreateQueue,
   IWorkerEntityPoolOptions,
@@ -15,6 +15,7 @@ import type {
 import worker from "worker!./streamer.worker"
 import { Logger } from "@/logger"
 import { WorkerEventQueue } from "./worker-event-queue"
+import { LogLevel } from "altv-xlogger"
 
 export class Streamer {
   private static _instance: Streamer | null = null
@@ -26,7 +27,7 @@ export class Streamer {
   private readonly mainStreamSleepMs = 20
 
   private readonly workerEventHandlers: { [K in WorkerFromEvents]: IWorkerFromEvent[K] } = {
-    [WorkerFromEvents.StreamResult]: (streamOut, streamIn) => {
+    [WorkerFromEvents.StreamResult]: async (streamOut, streamIn) => {
       if (streamOut.length > 0 || streamIn.length > 0)
         this.log.moreInfo("[StreamResult]", "out:", streamOut, "in:", streamIn)
       // this.log.moreInfo("this.thisTickDestroyedEntities:", this.thisTickDestroyedEntities)
@@ -48,6 +49,13 @@ export class Streamer {
           this.log.warn(`destroyed entity: ${entityId} streamIn`)
           continue
         }
+
+        const nextTick = Entity.getByID(entityId)?.pool.singleEntityStreamInPerTick
+        if (nextTick == null) {
+          this.log.warn(`unknown entity: ${entityId} streamIn`)
+          continue
+        }
+        if (nextTick) await alt.Utils.wait(0)
 
         this.streamInEntityHandler(entityId)
       }
@@ -80,7 +88,10 @@ export class Streamer {
     started: false,
   }
 
-  private readonly log = new Logger("streamer")
+  private readonly log = new Logger(
+    "streamer",
+    ___DEVMODE ? LogLevel.Info : LogLevel.Error,
+  )
 
   private thisTickDestroyedEntities: Record<Entity["id"], true> = {}
 
@@ -121,7 +132,7 @@ export class Streamer {
   public addEntity(entity: Entity): void {
     this.entityCreateQueue.entities.push({
       id: entity.id,
-      poolId: entity.poolId,
+      poolId: entity.pool.id,
       pos: {
         x: entity.pos.x,
         y: entity.pos.y,

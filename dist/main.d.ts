@@ -4,11 +4,20 @@ import * as alt from 'alt-client';
 
 interface IEntityPoolOptions<TEntity extends Entity = Entity> {
 	maxStreamedIn?: number;
+	singleEntityStreamInPerTick?: boolean;
 	onStreamIn?: (entity: TEntity) => void;
 	onStreamOut?: (entity: TEntity) => void;
 }
+interface IEntityPool<TEntity extends Entity = Entity> {
+	readonly id: number;
+	streamedIn: TEntity[];
+	maxStreamedIn: number;
+	singleEntityStreamInPerTick: boolean;
+	readonly onStreamIn: (entity: TEntity) => void;
+	readonly onStreamOut: (entity: TEntity) => void;
+}
 export declare class Entity {
-	private static __poolId;
+	private static __pool;
 	private static __maxStreamedIn;
 	private static __streamedIn;
 	private static readonly __entityIdProvider;
@@ -26,7 +35,7 @@ export declare class Entity {
 	private __valid;
 	private __pos;
 	readonly id: number;
-	readonly poolId: number;
+	readonly pool: Readonly<IEntityPool>;
 	readonly streamRange: number;
 	constructor(pos: alt.IVector3, streamRange?: number);
 	get valid(): boolean;

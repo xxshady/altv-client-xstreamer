@@ -35,5 +35,9 @@ export const validEntity = () => function(
 
 function assertValidEntity(entity: Entity) {
   if (entity.valid) return
-  throw new Error(`entity id: ${entity.id} (${entity.constructor?.name}) pool id: ${entity.poolId}) was destroyed`)
+
+  throw new Error(
+    `entity id: ${entity.id} (${entity.constructor?.name})` +
+    `pool id: ${entity.pool.id}) was destroyed`,
+  )
 }

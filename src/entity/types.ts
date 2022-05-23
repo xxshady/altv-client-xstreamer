@@ -1,8 +1,10 @@
 import type { Entity } from "./class"
 
 export interface IEntityPool<TEntity extends Entity = Entity> {
+  readonly id: number
   streamedIn: TEntity[]
   maxStreamedIn: number
-  onStreamIn: (entity: TEntity) => void
-  onStreamOut: (entity: TEntity) => void
+  singleEntityStreamInPerTick: boolean
+  readonly onStreamIn: (entity: TEntity) => void
+  readonly onStreamOut: (entity: TEntity) => void
 }

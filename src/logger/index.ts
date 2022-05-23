@@ -3,9 +3,12 @@ import {
 } from "altv-xlogger"
 
 export class Logger extends XLogger {
-  constructor(name: string) {
+  constructor(
+    name: string,
+    logLevel: LogLevel = ___DEVMODE ? LogLevel.Info : LogLevel.Warn,
+  ) {
     super(`client-xstreamer > ${name}`, {
-      logLevel: ___DEVMODE ? LogLevel.Info : LogLevel.Warn,
+      logLevel,
     })
   }
 }
