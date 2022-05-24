@@ -697,7 +697,7 @@ var UndefinedEntityPoolError = class extends Error {
 };
 
 // src/entity/class.ts
-var log = new Logger2("Entity");
+var log = new Logger2("Entity", false ? LogLevel.Info : LogLevel.Error);
 var Entity = class {
   static get maxStreamedIn() {
     if (this.__pool == null || this.__maxStreamedIn == null)
@@ -762,7 +762,7 @@ var Entity = class {
   static onStreamInEntityId(entityId) {
     const entity = Entity.__entities[entityId];
     if (!entity) {
-      log.error(`Entity.onStreamIn unknown entity: ${entityId}`);
+      log.warn(`Entity.onStreamIn unknown entity: ${entityId}`);
       return;
     }
     if (entity.__streamed) {
