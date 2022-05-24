@@ -8,7 +8,10 @@ import type { IEntityPoolOptions } from "./decorators/types"
 import { UndefinedEntityPoolError } from "./errors"
 import type { IEntityPool } from "./types"
 
-const log = new Logger("Entity")
+const log = new Logger(
+  "Entity",
+  ___DEVMODE ? LogLevel.Info : LogLevel.Error,
+)
 
 @init({
   streamer: {
@@ -107,7 +110,7 @@ export class Entity {
     const entity = Entity.__entities[entityId]
 
     if (!entity) {
-      log.error(`Entity.onStreamIn unknown entity: ${entityId}`)
+      log.warn(`Entity.onStreamIn unknown entity: ${entityId}`)
       return
     }
 
