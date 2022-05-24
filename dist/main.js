@@ -451,7 +451,7 @@ __decorate([
 
 // src/logger/index.ts
 var Logger2 = class extends Logger {
-  constructor(name, logLevel = true ? LogLevel.Info : LogLevel.Warn) {
+  constructor(name, logLevel = false ? LogLevel.Info : LogLevel.Warn) {
     super(`client-xstreamer > ${name}`, {
       logLevel
     });
@@ -550,7 +550,7 @@ var _Streamer = class {
     sendPromise: null,
     started: false
   };
-  log = new Logger2("streamer", true ? LogLevel.Info : LogLevel.Error);
+  log = new Logger2("streamer", false ? LogLevel.Info : LogLevel.Error);
   thisTickDestroyedEntities = {};
   workerEventQueue = new WorkerEventQueue(worker);
   constructor() {
@@ -685,7 +685,7 @@ var validEntity = () => function(target, propertyName, descriptor) {
 function assertValidEntity(entity) {
   if (entity.valid)
     return;
-  throw new Error(`entity id: ${entity.id} (${entity.constructor?.name}) pool id: ${entity.pool}) was destroyed`);
+  throw new Error(`entity id: ${entity.id} (${entity.constructor?.name})pool id: ${entity.pool.id}) was destroyed`);
 }
 
 // src/entity/errors/undefined-pool.ts
