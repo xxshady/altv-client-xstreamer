@@ -206,7 +206,6 @@ export class Entity {
     Streamer.instance.setEntityPos(this, value)
   }
 
-  @validEntity()
   public get streamed(): boolean {
     return this.__streamed
   }
