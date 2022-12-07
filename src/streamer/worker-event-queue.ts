@@ -1,4 +1,3 @@
-import type * as alt from "alt-client"
 import type { WorkerIntoEvents, IWorkerIntoEvent } from "./events"
 
 export class WorkerEventQueue {
@@ -7,7 +6,7 @@ export class WorkerEventQueue {
     Parameters<IWorkerIntoEvent[WorkerIntoEvents]>,
   ][] = []
 
-  constructor(private readonly worker: alt.Worker) {}
+  constructor(private readonly worker: { emit(event: string, ...args: unknown[]): void }) {}
 
   public add<K extends WorkerIntoEvents>(eventName: K, args: Parameters<IWorkerIntoEvent[K]>): void {
     this.events.push([eventName, args])

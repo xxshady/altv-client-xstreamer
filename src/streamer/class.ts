@@ -12,10 +12,11 @@ import type {
   IEntityCreateQueue,
   IWorkerEntityPoolOptions,
 } from "./types"
-import worker from "worker!./streamer.worker"
 import { Logger } from "@/logger"
 import { WorkerEventQueue } from "./worker-event-queue"
 import { LogLevel } from "altv-xlogger"
+import { client as worker } from "./alt-mock"
+import "./streamer-worker"
 
 export class Streamer {
   private static _instance: Streamer | null = null
@@ -24,7 +25,7 @@ export class Streamer {
     return (Streamer._instance ??= new Streamer())
   }
 
-  private readonly mainStreamSleepMs = 20
+  private readonly mainStreamSleepMs = 500
 
   private readonly workerEventHandlers: { [K in WorkerFromEvents]: IWorkerFromEvent[K] } = {
     [WorkerFromEvents.StreamResult]: async (streamOut, streamIn) => {
@@ -98,7 +99,7 @@ export class Streamer {
   private readonly workerEventQueue = new WorkerEventQueue(worker)
 
   constructor() {
-    worker.start()
+    // worker.start()
     this.initEvents()
     this.runMainStream()
   }

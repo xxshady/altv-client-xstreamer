@@ -1,6 +1,3 @@
-// src/streamer/streamer.worker.ts
-import * as alt from "alt-worker";
-
 // src/utils/distance-2d.ts
 var distance2dInRange = (a, b, range) => {
   const ab1 = b.x - a.x;
@@ -10,6 +7,35 @@ var distance2dInRange = (a, b, range) => {
   if (Math.abs(ab2) > range)
     return Infinity;
   return Math.sqrt(ab1 * ab1 + ab2 * ab2);
+};
+
+// src/streamer/alt-mock.ts
+var workerEvents = {};
+var workerDelayedEvents = /* @__PURE__ */ new Map();
+var clientEvents = {};
+var worker = {
+  log(...args) {
+    console.log("[worker]", ...args);
+  },
+  logError(...args) {
+    console.error("[worker]", ...args);
+  },
+  logWarning(...args) {
+    console.warn("[worker]", ...args);
+  },
+  on(event, handler) {
+    workerEvents[event] = handler;
+  },
+  emit(event, ...args) {
+    clientEvents[event](...args);
+  },
+  ready() {
+    for (const [event, calls] of workerDelayedEvents) {
+      console.log("worker.ready", "calling event:", event, "calls:", calls.length);
+      for (const args of calls)
+        workerEvents[event](...args);
+    }
+  }
 };
 
 // src/streamer/streamer.worker.ts
@@ -84,23 +110,23 @@ var StreamWorker = class {
   pools = {};
   entities = {};
   entityArray = [];
-  log = false ? (...args) => alt.log("~cl~[streamer-worker]~w~", ...args) : () => {
+  log = true ? (...args) => worker.log("~cl~[streamer-worker]~w~", ...args) : () => {
   };
   constructor() {
     this.initEvents();
   }
   initEvents() {
     for (const eventName in this.eventHandlers)
-      alt.on(eventName, this.eventHandlers[eventName]);
+      worker.on(eventName, this.eventHandlers[eventName]);
   }
   emitClient(eventName, ...args) {
-    alt.emit(eventName, ...args);
+    worker.emit(eventName, ...args);
   }
   logError(...args) {
-    alt.logError("[streamer-worker]", ...args);
+    worker.logError("[streamer-worker]", ...args);
   }
   logWarn(...args) {
-    alt.logWarning("[streamer-worker]", ...args);
+    worker.logWarning("[streamer-worker]", ...args);
   }
   addEntityIntoArray(entity) {
     this.entityArray.push({
@@ -185,3 +211,4 @@ var StreamWorker = class {
   }
 };
 new StreamWorker();
+worker.ready();

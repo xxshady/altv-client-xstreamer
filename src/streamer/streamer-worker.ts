@@ -1,5 +1,4 @@
 import type { IVector2 } from "alt-shared"
-import * as alt from "alt-worker"
 import { distance2dInRange } from "../utils"
 import type {
   IWorkerFromEvent,
@@ -14,6 +13,7 @@ import type {
   IWorkerEntityArrElement,
   IWorkerEntityPool,
 } from "./types"
+import { worker as alt } from "./alt-mock"
 
 class StreamWorker {
   private readonly eventHandlers: { [K in WorkerIntoEvents]: IWorkerIntoEvent[K] } = {
@@ -272,3 +272,5 @@ class StreamWorker {
 }
 
 new StreamWorker()
+
+alt.ready()
