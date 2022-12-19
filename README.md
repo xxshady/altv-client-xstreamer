@@ -1,6 +1,6 @@
 # alt:V JS worker api was deprecated in 13.0 ⚠️
 
-You can use `no-worker` branch as temp workaround
+You can use [`no-worker`](https://github.com/xxshady/altv-client-xstreamer/tree/no-worker) branch as temp workaround
 
 ## altv-client-xstreamer
 
