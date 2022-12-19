@@ -1,3 +1,5 @@
+# alt:V JS worker api was deprecated in 13.0
+
 # altv-client-xstreamer
 
 A client-side TS implementation of an efficient entity streamer for [alt:V](https://altv.mp) based on [workers](https://docs.altv.mp/js/articles/workers.html)
